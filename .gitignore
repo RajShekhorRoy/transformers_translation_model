@@ -1,0 +1,5 @@
+./all_models
+./all_models/*
+./__pychaceh__/
+all_models
+.idea
