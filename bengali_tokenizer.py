@@ -1,4 +1,5 @@
-from torchtext.data.functional import generate_sp_model
+from torchtext.data.functional import generate_sp_model, load_sp_model, sentencepiece_numericalizer,sentencepiece_tokenizer,simple_space_split
+
 import csv
 import pandas as pd
 # csv_file = csv.reader("/Users/rajshekhorroy/Documents/bangla_sent.csv.numbers")
@@ -12,16 +13,15 @@ unique_word = []
 # df = pd.read_csv(csv_file)
 #
 # print(df)
-generate_sp_model('./bangla_cleaned.csv', vocab_size=23456,model_prefix='spm_user')
-
-# sp_model = load_sp_model("./spm_user.model")
-# sp_id_generator = sentencepiece_numericalizer(sp_model)
-# tokenizer = sp_id_generator(['একটি গোলাপী জামা পরা বাচ্চা মেয়ে একটি বাড়ির প্রবেশ পথের সিঁড়ি বেয়ে উঠছে'
-# ,'একটি মেয়ে শিশু একটি কাঠের বাড়িতে ঢুকছে'
-# ,'একটি বাচ্চা তার কাঠের খেলাঘরে উঠছে ।'
-# ,'ছোট মেয়েটি তার খেলার ঘরের সিড়ি বেয়ে উঠছে'])
-data=[]
-# print(list(tokenizer))
+# generate_sp_model('./bangla_cleaned.csv', vocab_size=8950,model_prefix='spm_user')
+##list(simple_space_split(['একটি গোলাপী জামা পরা বাচ্চা মেয়ে একটি বাড়ির প্রবেশ পথের সিঁড়ি বেয়ে উঠছে']))
+sp_model = load_sp_model("./spm_user.model")
+sp_id_generator = sentencepiece_numericalizer(sp_model)
+tokenizer = sp_id_generator(['একটি গোলাপী জামা পরা বাচ্চা মেয়ে একটি বাড়ির প্রবেশ পথের সিঁড়ি বেয়ে উঠছে'
+,'একটি মেয়ে শিশু একটি কাঠের বাড়িতে ঢুকছে'
+,'একটি বাচ্চা তার কাঠের খেলাঘরে উঠছে'
+,'ছোট মেয়েটি তার খেলার ঘরের সিড়ি বেয়ে উঠছে'])
+print(list(tokenizer))
 
 # # Open the file and read line by line and remove special characters
 # dat = pd.read_csv("/Users/rajshekhorroy/Documents/english_to_bengali_2.csv",header=None)

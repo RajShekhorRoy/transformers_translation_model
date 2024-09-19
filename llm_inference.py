@@ -9,7 +9,7 @@ from torchtext.utils import download_from_url, extract_archive
 import io
 import numpy as np
 
-from transofmer_model import Encoder, Attention, Decoder, Seq2Seq, count_parameters, init_weights
+from seq_seq_model import Encoder, Attention, Decoder, Seq2Seq, count_parameters, init_weights
 
 
 def build_vocab(_list, tokenizer, _index):

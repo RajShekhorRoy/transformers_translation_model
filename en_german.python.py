@@ -9,7 +9,7 @@ from torchtext.utils import download_from_url, extract_archive
 import io
 import numpy as np
 ##https://pytorch.org/tutorials/beginner/translation_transformer.html
-from transofmer_model import Encoder, Attention, Decoder, Seq2Seq, count_parameters, init_weights
+from seq_seq_model import Encoder, Attention, Decoder, Seq2Seq, count_parameters, init_weights
 def tensor_to_words(tensor, vocab):
     # tensor: [max_len, batch_size] -> output of the model after argmax
     sentences = []

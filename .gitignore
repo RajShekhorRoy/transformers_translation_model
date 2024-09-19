@@ -3,3 +3,8 @@
 ./__pychaceh__/
 all_models
 .idea
+spm_user.model
+spm_user.vocab
+logs
+english_cleaned.csv
+__pycache__/

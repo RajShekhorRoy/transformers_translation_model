@@ -10,7 +10,7 @@ import numpy as np
 
 from llm_libs import build_vocab, data_process, train, evaluate, epoch_time
 ##https://pytorch.org/tutorials/beginner/translation_transformer.html
-from transofmer_model import Encoder, Attention, Decoder, Seq2Seq, count_parameters, init_weights
+from seq_seq_model import Encoder, Attention, Decoder, Seq2Seq, count_parameters, init_weights
 
 filename = '/Users/rajshekhorroy/Downloads/english-german-both.pkl'
 clean_dataset = copy.deepcopy(np.load(open(filename, 'rb'), allow_pickle=True))
