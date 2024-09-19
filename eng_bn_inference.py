@@ -35,23 +35,65 @@ def evaluate(model):
     losses = 0
 
     val_dataloader = DataLoader(val_iter, batch_size=BATCH_SIZE, collate_fn=generate_batch)
+    print("english , bangla ,prediction")
+    for src, tgt in val_data:
+        pred_word = translate(model,src)
+        print(src,tgt,pred_word)
 
-    for src, tgt in val_dataloader:
-        src = src.to(DEVICE)
-        tgt = tgt.to(DEVICE)
 
-        tgt_input = tgt[:-1, :]
+        #
+        # tgt_input = tgt[:-1, :]
+        #
+        # src_mask, tgt_mask, src_padding_mask, tgt_padding_mask = create_mask(src, tgt_input)
+        #
+        # logits = model(src, tgt_input, src_mask, tgt_mask, src_padding_mask, tgt_padding_mask, src_padding_mask)
+        #
+        # tgt_out = tgt[1:, :]
+        # loss = loss_fn(logits.reshape(-1, logits.shape[-1]), tgt_out.reshape(-1))
+        # losses += loss.item()
 
-        src_mask, tgt_mask, src_padding_mask, tgt_padding_mask = create_mask(src, tgt_input)
+    # return losses / len(list(val_dataloader))
 
-        logits = model(src, tgt_input, src_mask, tgt_mask, src_padding_mask, tgt_padding_mask, src_padding_mask)
 
-        tgt_out = tgt[1:, :]
-        loss = loss_fn(logits.reshape(-1, logits.shape[-1]), tgt_out.reshape(-1))
-        losses += loss.item()
+# function to generate output sequence using greedy algorithm
+def greedy_decode(model, src, src_mask, max_len, start_symbol):
+    src = src.to(DEVICE)
+    src_mask = src_mask.to(DEVICE)
 
-    return losses / len(list(val_dataloader))
+    memory = model.encode(src, src_mask)
+    ys = torch.ones(1, 1).fill_(start_symbol).type(torch.long).to(DEVICE)
+    for i in range(max_len - 1):
+        memory = memory.to(DEVICE)
+        tgt_mask = (generate_square_subsequent_mask(ys.size(0))
+                    .type(torch.bool)).to(DEVICE)
+        out = model.decode(ys, memory, tgt_mask)
+        out = out.transpose(0, 1)
+        prob = model.generator(out[:, -1])
+        _, next_word = torch.max(prob, dim=1)
+        next_word = next_word.item()
 
+        ys = torch.cat([ys,
+                        torch.ones(1, 1).type_as(src.data).fill_(next_word)], dim=0)
+        if next_word == EOS_IDX:
+            break
+    return ys
+def tensor_to_words(tensor, vocab):
+    # tensor: [max_len, batch_size] -> output of the model after argmax
+    sentences = []
+   # Transpose to get batch-first
+    words = [vocab.itos[idx.item()] for idx in tensor if vocab.itos[idx.item()] != '<pad>']
+    sentences.append(' '.join(words))
+    return sentences[0].replace('<bos>',"").replace('<eos>',"").strip()
+
+# actual function to translate input sentence into target language
+def translate(model: torch.nn.Module, src_sentence: str):
+    model.eval()
+    src = torch.tensor([en_vocab[token] for token in en_tokenizer(str(src_sentence))], dtype=torch.long).view(-1, 1)
+    num_tokens = src.shape[0]
+    src_mask = (torch.zeros(num_tokens, num_tokens)).type(torch.bool)
+    tgt_tokens = greedy_decode(
+        model, src, src_mask, max_len=num_tokens + 5, start_symbol=BOS_IDX).flatten()
+    return tensor_to_words(list(tgt_tokens.cpu().numpy()),bn_vocab)
 
 def create_mask(src, tgt):
     src_seq_len = src.shape[0]
@@ -176,33 +218,8 @@ def data_process_bn_en(_arr):
 train_iter = data_process_bn_en(train_data)
 val_iter = data_process_bn_en(val_data)
 
-# val_dataloader = DataLoader(val_iter, batch_size=BATCH_SIZE, collate_fn=generate_batch)
-def train_epoch(model, optimizer):
-    model.train()
-    losses = 0
+val_dataloader = DataLoader(val_iter, batch_size=BATCH_SIZE, collate_fn=generate_batch)
 
-    train_dataloader = DataLoader(train_iter, batch_size=BATCH_SIZE, collate_fn=generate_batch)
-
-    for src, tgt in train_dataloader:
-        src = src.to(DEVICE)
-        tgt = tgt.to(DEVICE)
-
-        tgt_input = tgt[:-1, :]
-
-        src_mask, tgt_mask, src_padding_mask, tgt_padding_mask = create_mask(src, tgt_input)
-        logits = model(src=src, trg=tgt_input, src_mask=src_mask, tgt_mask=tgt_mask, src_padding_mask=src_padding_mask, tgt_padding_mask=tgt_padding_mask, memory_key_padding_mask=src_padding_mask)
-
-        optimizer.zero_grad()
-
-        tgt_out = tgt[1:, :]
-        loss = loss_fn(logits.reshape(-1, logits.shape[-1]), tgt_out.reshape(-1))
-
-        loss.backward()
-        append_file_information("./logs",loss.detach().numpy())
-        optimizer.step()
-        losses += loss.item()
-
-    return losses / len(list(train_dataloader))
 
 def append_file_information(_filename, _info):
     with open(_filename, "a+") as f:
@@ -211,49 +228,11 @@ def append_file_information(_filename, _info):
 from timeit import default_timer as timer
 
 NUM_EPOCHS = 100
-
+transformer.load_state_dict(torch.load('./all_models/en_bn/09192024/ep_27', weights_only=True))
 for epoch in range(1, NUM_EPOCHS + 1):
     start_time = timer()
-    train_loss = train_epoch(transformer, optimizer)
+    # train_loss = train_epoch(transformer, optimizer)
     end_time = timer()
-    torch.save(transformer.state_dict(), './all_models/en_bn/09192024/ep_' + str(epoch))
-    val_loss = evaluate(transformer)
-    print((
-        f"Epoch: {epoch}, Train loss: {train_loss:.3f}, Val loss: {val_loss:.3f}, "f"Epoch time = {(end_time - start_time):.3f}s"))
+    # torch.save(transformer.state_dict(), './all_models/en_bn/09192024/ep_' + str(epoch))
+    evaluate(transformer)
 
-
-# function to generate output sequence using greedy algorithm
-def greedy_decode(model, src, src_mask, max_len, start_symbol):
-    src = src.to(DEVICE)
-    src_mask = src_mask.to(DEVICE)
-
-    memory = model.encode(src, src_mask)
-    ys = torch.ones(1, 1).fill_(start_symbol).type(torch.long).to(DEVICE)
-    for i in range(max_len - 1):
-        memory = memory.to(DEVICE)
-        tgt_mask = (generate_square_subsequent_mask(ys.size(0))
-                    .type(torch.bool)).to(DEVICE)
-        out = model.decode(ys, memory, tgt_mask)
-        out = out.transpose(0, 1)
-        prob = model.generator(out[:, -1])
-        _, next_word = torch.max(prob, dim=1)
-        next_word = next_word.item()
-
-        ys = torch.cat([ys,
-                        torch.ones(1, 1).type_as(src.data).fill_(next_word)], dim=0)
-        if next_word == EOS_IDX:
-            break
-    return ys
-
-
-# actual function to translate input sentence into target language
-def translate(model: torch.nn.Module, src_sentence: str):
-    model.eval()
-    src = torch.tensor([en_vocab[token] for token in en_tokenizer(str(src_sentence))], dtype=torch.long).view(-1, 1)
-    num_tokens = src.shape[0]
-    src_mask = (torch.zeros(num_tokens, num_tokens)).type(torch.bool)
-    tgt_tokens = greedy_decode(
-        model, src, src_mask, max_len=num_tokens + 5, start_symbol=BOS_IDX).flatten()
-    return " ".join(vocab_transform[TGT_LANGUAGE].lookup_tokens(list(tgt_tokens.cpu().numpy()))).replace("<bos>",
-                                                                                                         "").replace(
-        "<eos>", "")
